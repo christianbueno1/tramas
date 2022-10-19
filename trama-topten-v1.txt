@@ -1,0 +1,146 @@
+   Public Function conectarSocketCliente(P_ipserver As String, P_puerto As Int32) As Socket
+        Dim ipHostInfo As IPHostEntry = Dns.GetHostEntry(Dns.GetHostName())
+        Dim ipAddress As IPAddress = ipHostInfo.AddressList(0)
+        'Dim remoteEP As New IPEndPoint(ipAddress, puertoGps)
+        Dim remoteEP As New IPEndPoint(IPAddress.Parse(P_ipserver), P_puerto)
+
+        ' Create a TCP/IP socket.
+        Dim client As New Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+
+        ' Connect to the remote endpoint.
+        client.BeginConnect(remoteEP, New AsyncCallback(AddressOf ConnectCallback), client)
+
+        ' Wait for connect.
+        'Thread.Sleep(2000)
+        connectDone.WaitOne()
+
+        Return client
+    End Function
+	
+-----------------------------
+    Private Sub EnviarAtmSocket(
+ByVal P_Id As String,
+horaSatelite As String,
+calidadSenal As String,
+ByVal P_latitud As String,
+ByVal P_longitud As String,
+ByVal P_velocidad As String,
+ByVal P_Rumbo As String,
+fechaSatelite As String,
+ByVal P_alertas As String,
+ByVal P_altura As String,
+ByVal P_estado As String,
+P_odometro As String,
+P_Senal As String)
+        Dim cadenaTrama As String = ""
+        Dim VL_Contar As String = ""
+        Dim VL_Checksum As String = ""
+
+        Dim V_client As Socket = Nothing
+
+        Try
+            V_client = conectarSocketCliente(ipserver, puertoGps)
+
+            Select Case Left(P_Id.Trim, 1)
+                Case "0"    'CondorSeeker
+                    cadenaTrama = "24 24"
+                    cadenaTrama += " LL LL "
+                    For y = 1 To 13 Step 2
+                        cadenaTrama += Mid(P_Id, y, 2)
+                        If y < 13 Then cadenaTrama += " "
+                    Next
+                    If P_alertas = "00" Then
+                        cadenaTrama += " 99 55"
+                    Else
+                        cadenaTrama += " 99 99"
+                        cadenaTrama += " " + P_alertas.Trim
+                    End If
+                    cadenaTrama += " " + StrToHex(horaSatelite & ".000") + " 2c"
+                    cadenaTrama += " " + StrToHex(calidadSenal) + " 2c"
+                    cadenaTrama += " " + StrToHex(P_latitud) + " 2c 53 2c"
+                    cadenaTrama += " " + StrToHex(P_longitud) + " 2c 57 2c"
+                    cadenaTrama += " " + StrToHex(P_velocidad) + " 2c"   'Velocidad
+                    cadenaTrama += " " + StrToHex(P_Rumbo) + " 2c"   'Rumbo
+                    cadenaTrama += " " + StrToHex(fechaSatelite) + " 2c 2c 2c"   'Fecha
+                    cadenaTrama += " 41 2a 36 33 7c"    'A*63|
+                    cadenaTrama += " 31 2e 31 7c"    '312e31  Hdop
+                    cadenaTrama += " " + StrToHex(P_altura) + " 7c"   'Altitud
+                    cadenaTrama += " " + P_estado + " 7c"   'Estado
+                    cadenaTrama += " 30 30 30 33 2c 30 30 30 42 7c"    'AD1 Y AD2
+                    cadenaTrama += " " + StrToHex(P_odometro) + " 7c"   'Odometro
+                    VL_Contar = Conversion.Hex(Str((Math.Round((cadenaTrama.Length + 1) / 3, 0))))
+                    cadenaTrama = cadenaTrama.Replace("LL LL", "00 " & VL_Contar)
+                    VL_Checksum = convertirChecksum(cadenaTrama)
+                    cadenaTrama += " " + VL_Checksum.Substring(0, 2) + " " + VL_Checksum.Substring(2, 2)
+                    cadenaTrama += " 0d 0a" 'Final
+                Case Else   'Queclink gv300
+
+            End Select
+
+            Send(V_client, cadenaTrama)
+            sendDone.WaitOne()
+
+            'P_client.Shutdown(SocketShutdown.Both)
+            'P_client.Close()
+            cerrarSocket(V_client)
+
+        Catch ex1 As SocketException
+            GeneraArchivo("EAS>" + ex1.Message, rutaLog)
+            cerrarSocket(V_client)
+        Catch ex As Exception
+            GeneraArchivo("EA>" + ex.Message, rutaLog)
+            cerrarSocket(V_client)
+        End Try
+
+    End Sub
+	----------------------------------------
+	   Public Function StrToHex(P_Data As String) As String
+        Dim sVal As String
+        Dim sHex As String = ""
+        Dim Data As String = P_Data
+
+        Try
+            While Data.Length > 0
+                sVal = Conversion.Hex(Strings.Asc(Data.Substring(0, 1).ToString() ) ) + " "
+                Data = Data.Substring(1, Data.Length - 1)
+                sHex = sHex & sVal
+            End While
+
+        Catch ex As Exception
+            GeneraArchivo("SH>" + ex.Message, rutaLog)
+        End Try
+        Return sHex.Trim
+    End Function
+	---------------------------------
+	   Public Function convertirChecksum(Data As String) As String
+        Dim hexa As String = Data
+        Dim hexad() As String = hexa.Split(" ")
+        Dim VL_Check As String = ""
+
+        Try
+            Dim buffer(hexad.Length) As Byte
+            For I = 0 To UBound(hexad)
+                buffer(I) = AscW(ChrW("&h" & hexad(I)))
+            Next
+
+            Dim bytes As Byte() = Data.Split(" "c).Select(Function(n) Convert.ToByte(Convert.ToInt32(n, 16))).ToArray()
+
+            Dim c As CRC.Crc = New CRC.Crc(CRC.CrcStdParams.StandartParameters(CRC.CrcAlgorithms.Crc16X25))
+            'Return CRC.CrcHelper.ToUInt64(c.ComputeHash(buffer, 0, buffer.Length))
+
+            VL_Check = Hex(CRC.CrcHelper.ToUInt64(c.ComputeHash(bytes, 0, bytes.Length)))
+
+            Select Case VL_Check.Length
+                Case 2
+                    VL_Check = "00" + VL_Check
+                Case 3
+                    VL_Check = "0" + VL_Check
+            End Select
+        Catch ex As Exception
+            GeneraArchivo("CK>" + ex.Message, rutaLog)
+        End Try
+
+        Return VL_Check
+    End Function
+	-------------------------
+	
