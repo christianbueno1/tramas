@@ -2,21 +2,24 @@ respuesta = {}
 
 trama = ''
 #-90 90
-lat = '10'
+lat = '88'
 #-180 180
-lng = '20'
+lng = '88'
 ###
 p_id = "001122334455667788"
-hora_satelite = 'ABC'
-calidad_senal = ''
-p_velocidad = ''
-p_rumbo = ''
-fecha_satelite = ''
+#9  hex: 39, dec:57
+hora_satelite = '999'
+# hora_satelite = 'ABC'
+# 8 hex:38, dec:56
+calidad_senal = '88'
+p_velocidad = '8'
+p_rumbo = '8'
+fecha_satelite = '8'
 # p_alertas=" 11"
 p_alertas = "00"
-p_altura = ''
-p_estado = ''
-p_odometro = ''
+p_altura = '8'
+p_estado = '00'
+p_odometro = '8'
 p_senal = ''
 p_latitud = lat
 p_longitud = lng
@@ -34,6 +37,10 @@ def str_to_hex(p_data):
     # s_val = ""
     # s_hex = ""
     # data = p_data
+    #can return hex of DBCS like 190
+    #hex 41 190 3a0
+    # data = ''
+    # data = 'AƐΠ'
     # print(f"{data}")
     # data = data[0:3]
     #ord: str -> int
@@ -43,14 +50,19 @@ def str_to_hex(p_data):
     # unicode_hex = hex(5)
     # print(f"{data} {unicode_dec} {unicode_hex}")    
     p_data_hex = " ".join(f"{ord(c):02x}" for c in p_data)
-    # print(f"{p_data_hex}&")
+    # p_data_hex = " ".join(f"{ord(c):02x}" for c in data)
+    
+    # print(f"p_data_hex:&{p_data_hex}&")
 
     return p_data_hex
 
 def convertir_checksum(data: str):
     # hexa = data
     #65 A, 66 B, 67 C
-    hexa = '65 66 67'
+    #hex:2c dec:44, 'comma'
+    # hexa = '2c 2c 2c'
+    # 8 hex:38, dec:56
+    hexa = '38 38 38'
     hexad = []
     hexad = hexa.split(' ')
     vl_check = ""
@@ -61,12 +73,16 @@ def convertir_checksum(data: str):
     buffer = bytearray(len(hexad))
     # print(f"hexad: {len(hexad)} {len(buffer)}")
     #UBOUND maximum length of the array
-    #ASC char to decimal, 'A' -> 65
-    for i in hexad:
-        
+    # 8 hex:38, dec:56
+    #chrW dec -> character, 65 -> 'A', 56 -> '8'
+    #ASC char to decimal, 'A' -> 65, '8' -> 56
+    #AscW  0 through 65535. decimal
+    for index, val in enumerate(hexad):
+        buffer[index] = int(val,16)
+        print(f"{buffer[index]}")
+    print(f"buffer {buffer} {type(buffer[0])}")
 
-
-    vl_check = hexad
+    # vl_check = hexad
     return vl_check
 
 
@@ -109,7 +125,7 @@ match p_id.strip()[0]:
         print(f"{trama}")
         trama = trama.replace("LL LL", "00 " + vl_contar)
         vl_checksum = convertir_checksum(trama)
-        print(f"96: {vl_checksum}")
+        print(f"checksum: {vl_checksum}")
     case _:
         print(f"else default")
 
