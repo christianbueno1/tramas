@@ -5,7 +5,7 @@ trama = ''
 lat = '10'
 #-180 180
 lng = '20'
-
+###
 p_id = "001122334455667788"
 hora_satelite = 'ABC'
 calidad_senal = ''
@@ -31,8 +31,8 @@ v_client = ""
 
 #convert each character to hexadecimal
 def str_to_hex(p_data):
-    s_val = ""
-    s_hex = ""
+    # s_val = ""
+    # s_hex = ""
     # data = p_data
     # print(f"{data}")
     # data = data[0:3]
@@ -43,13 +43,31 @@ def str_to_hex(p_data):
     # unicode_hex = hex(5)
     # print(f"{data} {unicode_dec} {unicode_hex}")    
     p_data_hex = " ".join(f"{ord(c):02x}" for c in p_data)
-    print(f"{p_data_hex}&")
+    # print(f"{p_data_hex}&")
 
     return p_data_hex
 
-def convertir_checksum(trama):
+def convertir_checksum(data: str):
+    # hexa = data
+    #65 A, 66 B, 67 C
+    hexa = '65 66 67'
+    hexad = []
+    hexad = hexa.split(' ')
+    vl_check = ""
 
-    return '10'
+    #byte 0-255
+    #VB.net prefix "&h" exadecimal literall
+    #buffer(I) 0-255
+    buffer = bytearray(len(hexad))
+    # print(f"hexad: {len(hexad)} {len(buffer)}")
+    #UBOUND maximum length of the array
+    #ASC char to decimal, 'A' -> 65
+    for i in hexad:
+        
+
+
+    vl_check = hexad
+    return vl_check
 
 
 
@@ -91,7 +109,7 @@ match p_id.strip()[0]:
         print(f"{trama}")
         trama = trama.replace("LL LL", "00 " + vl_contar)
         vl_checksum = convertir_checksum(trama)
-        print(f"{vl_checksum}")
+        print(f"96: {vl_checksum}")
     case _:
         print(f"else default")
 
@@ -99,4 +117,4 @@ match p_id.strip()[0]:
 
 
 respuesta['trama'] = trama
-print(f"{respuesta['trama']}")
+print(f"trama: {respuesta['trama']}")
