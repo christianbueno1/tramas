@@ -1,3 +1,7 @@
+#CRC module
+from crc import CrcCalculator, Crc8
+
+
 respuesta = {}
 
 trama = ''
@@ -6,7 +10,8 @@ lat = '88'
 #-180 180
 lng = '88'
 ###
-p_id = "001122334455667788"
+#each 2 charcaters represent a hex
+p_id = "0038383838383838"
 #9  hex: 39, dec:57
 hora_satelite = '999'
 # hora_satelite = 'ABC'
@@ -32,8 +37,10 @@ v_client = ""
 #1 - 13
 #0 - 12
 
-#convert each character to hexadecimal
-def str_to_hex(p_data):
+#convert each character of a string to a string of its hexadecimal representation separated by space
+#888 -> 38 38 38
+#AƐΠ -> 41 190 3a0
+def str_to_hex(p_data: str):
     # s_val = ""
     # s_hex = ""
     # data = p_data
@@ -62,9 +69,20 @@ def convertir_checksum(data: str):
     #hex:2c dec:44, 'comma'
     # hexa = '2c 2c 2c'
     # 8 hex:38, dec:56
+
+    #data
+    
+    #array of integers to bytes
+    #b'888'
+    # data = bytes([56,56,56])
+
+    # data = '01 02 03 04 05'
+    # data = '38 38 38'
     hexa = '38 38 38'
+    
     hexad = []
     hexad = hexa.split(' ')
+    bytes_byte = bytearray()
     vl_check = ""
 
     #byte 0-255
@@ -79,8 +97,36 @@ def convertir_checksum(data: str):
     #AscW  0 through 65535. decimal
     for index, val in enumerate(hexad):
         buffer[index] = int(val,16)
-        print(f"{buffer[index]}")
-    print(f"buffer {buffer} {type(buffer[0])}")
+        # print(f"buffer: {buffer[index]}")
+    # print(f"buffer {buffer} {type(buffer[0])} {buffer[0]}")
+    
+    # print(f"data: {data}")
+    data = data.replace(" ", "")
+    # print(f"byte: {data}")
+
+
+    # bytes_byte = bytearray.fromhex(data)
+    bytes_byte = bytes.fromhex(data)
+    # print(f"bytes_byte: {bytes_byte} {type(bytes_byte)} {type(bytes_byte[0])} {bytes_byte[0]}")
+
+
+    #using CRC module
+    crc_calculator = CrcCalculator(Crc8.CCITT)
+    #checksum, 0x3838
+    vl_check: int = crc_calculator.calculate_checksum(bytes_byte)
+    #convert to hex and remove 0x
+    vl_check = hex(vl_check)[2:]
+    print(f"vl_check: {type(vl_check)} {vl_check} ")
+    # vl_check = vl_check[2:]
+    # print(f"vl_check: {vl_check}")
+
+    print(f"len: {len(vl_check)}")
+    match len(vl_check):
+        case 2:
+            vl_check = "00" + vl_check
+        case 3:
+            vl_check = "0" + vl_check
+
 
     # vl_check = hexad
     return vl_check
@@ -96,7 +142,7 @@ match p_id.strip()[0]:
             trama += p_id[y:y+2]
             if (y < 12):
                 trama += " "
-            print(f"{y}: {trama}")
+            # print(f"{y}: {trama}&")
         if p_alertas == '00':
             trama += ' 99 55'
         else:
@@ -125,7 +171,9 @@ match p_id.strip()[0]:
         print(f"{trama}")
         trama = trama.replace("LL LL", "00 " + vl_contar)
         vl_checksum = convertir_checksum(trama)
-        print(f"checksum: {vl_checksum}")
+        print(f"checksum: {vl_checksum} {vl_checksum[0:2]} {vl_checksum[2:4]}")
+        trama += f" {vl_checksum[0:2]} {vl_checksum[2:4]}" 
+        trama += f" 0d 0a"
     case _:
         print(f"else default")
 
